@@ -21,8 +21,7 @@ pml_testing<- read.csv("pml-testing.csv", header = TRUE)
 #delete some variables
 new_pml_training<-read.csv("cleaned-pml-training.csv", header = TRUE)
 nsv_training<-nearZeroVar(new_pml_training,saveMetrics = TRUE)
-cleaned_pml_testing<-pml_testing[ , colSums(is.na(pml_testing)) == 0]
-new_pml_testing<-cleaned_pml_testing[,-c(1:7)]
+new_pml_testing<-pml_testing[ , colSums(is.na(pml_testing)) == 0]
 nsv_testing<-nearZeroVar(new_pml_testing,saveMetrics = TRUE)
 prinComp<-princomp(~.,data = new_pml_training[-53],cor=TRUE )
 screeplot(prinComp,npcs = 52,type = 'lines')
@@ -32,7 +31,7 @@ train_control <- trainControl(method="cv", number=5)
 modelFit<-train(y=new_pml_training$classe,x=train_PC,trControl=train_control,method='rf')
 table(new_pml_training$classe,predict(modelFit,train_PC))
 print(modelFit$finalModel)
-test_PC<-predict(preProc,new_pml_testing)
+test_PC<-predict(preProc,new_pml_testing[,-53])
 predict(modelFit,test_PC)
 ```
 
