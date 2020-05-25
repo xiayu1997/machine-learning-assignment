@@ -5,12 +5,8 @@ date: "5/22/2020"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 # 1. preparations
-
 ```{r warning=FALSE, error=FALSE}
 library(rattle)
 library(caret)
