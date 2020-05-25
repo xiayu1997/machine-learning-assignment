@@ -9,38 +9,70 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# 1. preparations
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r warning=FALSE, error=FALSE}
+library(rattle)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(corrplot)
+library(randomForest)
+```
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r}
+# 2. import data
+```{r  warning=FALSE, error=FALSE}
 pml_training <- read.csv("pml-training.csv", header = TRUE)
 pml_testing<- read.csv("pml-testing.csv", header = TRUE)
-#delete some variables
+```
+# 3. clean data
+```{r  warning=FALSE, error=FALSE}
 new_pml_training<-read.csv("cleaned-pml-training.csv", header = TRUE)
 nsv_training<-nearZeroVar(new_pml_training,saveMetrics = TRUE)
 new_pml_testing<-pml_testing[ , colSums(is.na(pml_testing)) == 0]
 nsv_testing<-nearZeroVar(new_pml_testing,saveMetrics = TRUE)
+```
+# 4. performs principal components analysis on training set
+```{r  warning=FALSE, error=FALSE}
 prinComp<-princomp(~.,data = new_pml_training[-53],cor=TRUE )
 screeplot(prinComp,npcs = 52,type = 'lines')
 preProc<-preProcess(new_pml_training[,-53],method = 'pca',pcaComp =11 )
 train_PC<-predict(preProc,new_pml_training[,-53])
+```
+# 5. perform cross validation
+```{r  warning=FALSE, error=FALSE}
 train_control <- trainControl(method="cv", number=5)
-modelFit<-train(y=new_pml_training$classe,x=train_PC,trControl=train_control,method='rf')
-table(new_pml_training$classe,predict(modelFit,train_PC))
-print(modelFit$finalModel)
+```
+# 6. data modelling and prediction on test set
+## 1.random forest
+```{r  warning=FALSE, error=FALSE}
+modelFit_rf<-train(y=new_pml_training$classe,x=train_PC,trControl=train_control,method='rf')
+table(new_pml_training$classe,predict(modelFit_rf,train_PC))
+print(modelFit_rf$finalModel)
 test_PC<-predict(preProc,new_pml_testing[,-53])
-predict(modelFit,test_PC)
+predict(modelFit_rf,test_PC)
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+## 2.decision tree
+```{r  warning=FALSE, error=FALSE}
+modelFit_rpart<-train(y=new_pml_training$classe,x=train_PC,trControl=train_control,method='rpart')
+table(new_pml_training$classe,predict(modelFit_rpart,train_PC))
+print(modelFit_rpart$finalModel)
+test_PC<-predict(preProc,new_pml_testing[,-53])
+predict(modelFit_rpart,test_PC)
 ```
+# 7. out of sample error
+## 1. random forest
+```{r  warning=FALSE, error=FALSE}
+modelFit_rf
+```
+Look at the resample accuracy in modelFit_rf, we can see the accuracy is 0.966,0.963,0.963,0.961,0.961, so the expected out of sample error is 1-0.9628=0.0372
+## 2. decision tree
+```{r  warning=FALSE, error=FALSE}
+modelFit_rpart
+```
+Look at the resample accuracy in modelFit_rpart, we can see the accuracy is 0.378,0.414,0.354,0.401,0.438, so the expected out of sample error is 1-0.397=0.603
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# 8. we can clearly see the random forest model  is far more better than decision tree, which may because random forest is a collection of decision trees, aggregating many decision trees to limit overfitting as well as error due to bias and therefore yield better results. 
+
+
+
