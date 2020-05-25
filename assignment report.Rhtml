@@ -2,7 +2,20 @@
 
 Report
 
+
+
 How I built my model:
+preparation
+<!--begin.rcode
+library(lattice)
+library(ggplot2)
+library(caret)
+library(e1071)
+library(AppliedPredictiveModeling)
+end.rcode-->
+
+
+
 .	Data clean(Choose predictors): After I download the data, I analysis it first, and I delete the first seven columns which I thought is not relative to the classification using my common sense, leaving those I thought might be relative to the results, then I drop all the columns empty and with NA numbers, then using NSV function in R to delete the predictors which are not relative to the final results.
 <!--begin.rcode
 pml_training <- read.csv("pml-training.csv", header = TRUE)
