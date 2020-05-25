@@ -1,0 +1,76 @@
+---
+title: "Report"
+author: "xiayu"
+date: "5/25/2020"
+output: html_document
+---
+
+
+How I built my model:
+
+preparation
+```{r}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(e1071)
+library(AppliedPredictiveModeling)
+```
+
+•	Data clean(Choose predictors): After I download the data, I analysis it first, and I delete the first seven columns which I thought is not relative to the classification using my common sense, leaving those I thought might be relative to the results, then I drop all the columns empty and with NA numbers, then using NSV function in R to delete the predictors which are not relative to the final results.
+```{r}
+pml_training <- read.csv("pml-training.csv", header = TRUE)
+pml_testing<- read.csv("pml-testing.csv", header = TRUE)
+new_pml_training<-read.csv("cleaned-pml-training.csv", header = TRUE)
+nsv_training<-nearZeroVar(new_pml_training,saveMetrics = TRUE)
+new_pml_testing<-pml_testing[ , colSums(is.na(pml_testing)) == 0]
+nsv_testing<-nearZeroVar(new_pml_testing,saveMetrics = TRUE)
+```
+
+•	Principal components analysis: After cleaned the data, I still have 52 predictors, so I want to reduce the dimensionality of my variable to several principal components which can be visualized graphically with minimal loss of information. Then I use scree plot to decide the number of components I want to reserve, I found that the first 11 variables are enough to explained the most variance, so I set the number of principal component to be 11, and estimate the Pre-processing transformation from training set, then apply the Pre-processing transformation to training set and test to reduce the variables from 52 to 11.
+```{r}
+prinComp<-princomp(~.,data = new_pml_training[-53],cor=TRUE )
+screeplot(prinComp,npcs = 52,type = 'lines')
+preProc<-preProcess(new_pml_training[,-53],method = 'pca',pcaComp =11 )
+train_PC<-predict(preProc,new_pml_training[,-53])
+test_PC<-predict(preProc,new_pml_testing[,-53])
+```
+
+•	Cross validation: I didn’t divide the training set given into training and testing, because that will make my training set less and may affect the accuracy of my results, so I use K fold to do the cross validation to tune my tree to in order to reduce the overfitting problem which could occur when we do training and testing only in the training set. I set the K value to 5, because my data is not very big, and If I use k=20, then the training set will just be closer to the total dataset, then we will have lower bias but higher variance which means the prediction result depends heavily on the validation set we use; if k is too small, we will have the opposite result.
+```{r}
+train_control <- trainControl(method="cv", number=5)
+
+```
+
+•	Choose training method: Because the final prediction is the type not the numbers, I decide to use decision tree and rf in R method with the ‘cross validation control’ reducing the overfitting, then I got a tree which I could use on the test set to decide the problem.
+```{r}
+modelFit_rf<-train(y=new_pml_training$classe,x=train_PC,trControl=train_control,method='rf')
+table(new_pml_training$classe,predict(modelFit_rf,train_PC))
+print(modelFit_rf$finalModel)
+predict(modelFit_rf,test_PC)
+```
+
+```{r}
+modelFit_rpart<-train(y=new_pml_training$classe,x=train_PC,trControl=train_control,method='rpart')
+table(new_pml_training$classe,predict(modelFit_rpart,train_PC))
+print(modelFit_rpart$finalModel)
+predict(modelFit_rpart,test_PC)
+```
+
+
+•	plots the variances against the number of the principal component.
+
+```{r}
+screeplot(prinComp,npcs = 52,type = 'lines')
+```
+
+•	display the predicted class against actual class in training set
+```{r}
+table(new_pml_training$classe,predict(modelFit_rf,train_PC))
+table(new_pml_training$classe,predict(modelFit_rpart,train_PC))
+```
+
+Expected out of sample error:
+After using my two prediction model to predict 20 different test cases, I got the very different results.Look at the resample accuracy in modelFit_rf, we can see the accuracy in cross validation resample is 0.966,0.963,0.963,0.961,0.961, so the expected out of sample error is 1-0.9628=0.0372;Look at the resample accuracy in modelFit_rpart, we can see the accuracy is 0.378,0.414,0.354,0.401,0.438, so the expected out of sample error is 1-0.397=0.603.
+
+conclusion: we can clearly see the random forest model is far more better than decision tree, which may because random forest is a collection of decision trees, aggregating many decision trees to limit overfitting as well as error due to bias and therefore yield better results. 
